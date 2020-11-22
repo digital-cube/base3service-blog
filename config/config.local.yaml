@@ -1,0 +1,68 @@
+name: 'blog'
+description: 'base3 mailer application'
+prefix: '/api/blog'
+app_version: '0.0.1'
+host: 'mailer'
+port: &port 80
+
+apptype: 'micro-service'
+
+store:
+  type: 'redis'
+  host: 'localhost'
+  port: '6379'
+
+authorization:
+  key: 'Authorization'
+
+db:
+  type: 'postgres'
+  port: 5432
+  host: 'localhost'
+  username: 'blog'
+  password: '123'
+  database: 'demo_blog'
+
+logging:
+  version: 1
+  request_logger: base
+  formatters:
+    brief:
+      format: '%(asctime)s %(name)s %(levelname)s : %(message)s'
+    detailed:
+      format: 'time="%(asctime)s" logger="%(name)s" level="%(levelname)s" %(message)s'
+  handlers:
+    console:
+      class: logging.StreamHandler
+      level: CRITICAL
+      formatter: brief
+      stream: ext://sys.stdout
+    file:
+      class : logging.handlers.RotatingFileHandler
+      level: DEBUG
+      formatter: detailed
+      filename: /tmp/base_app.log
+      backupCount: 3
+  loggers:
+    base:
+      level: DEBUG
+      handlers:
+        - console
+        - file
+      propagate: no
+    tornado.access:
+      level: DEBUG
+      handlers:
+        - file
+    tornado.application:
+      level: DEBUG
+      handlers:
+        - file
+    tornado.general:
+      level: DEBUG
+      handlers:
+        - file
+  root:
+    level: WARNING
+    handlers:
+      - console
