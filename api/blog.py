@@ -1,13 +1,14 @@
 import base
 from base import http
-from base import paginate
 from tornado.concurrent import run_on_executor
 from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy import or_, desc
-import datetime
-import sendgrid
 from tornado import gen
 import os
+from PIL import Image
+import shutil
+import base64
+import hashlib
 
 if base.config.conf['apptype'] == 'monolith':
     base.route.set('prefix', base.config.conf['services']['contacts']['prefix'])
@@ -202,116 +203,149 @@ class PageHandler(base.Base):
                 'pages': [p.serialize(fields) for p in query.all()]}
 
 
-@Base.route(URI="/photos/info")
-class PhotosServiceInfoHandler(Base.BASE):
-
-    @Base.api()
-    async def get(self):
-        c = self.orm_session.query(models.Photo).count()
-        return {'info': c}
-
-
-@Base.route(URI="/photos/for_posts/:post_ids")
-class GetGroupedPhotosForPosts(Base.BASE):
-
-    @Base.api()
-    async def get(self, post_ids: str, group: str = None):
-        post_ids = post_ids.split(',')
-
-        r = {}
-        filters = [models.Photo.id_post.in_(post_ids)]
-
-        if group:
-            filters.append(models.Photo.group == group)
-
-        for photo in self.orm_session.query(models.Photo).filter(*filters).order_by(models.Photo.created).all():
-
-            if photo.id_post not in r:
-                r[photo.id_post] = []
-
-            r[photo.id_post].append(photo.uri_fname())
-
-        return r
+# @base.route(URI="/photos/info")
+# class PhotosServiceInfoHandler(base.Base):
+#
+#     @base.api()
+#     async def get(self):
+#         c = self.orm_session.query(models.Photo).count()
+#         return {'info': c}
 
 
-@Base.route(URI="/editor/photos/:id_post")
-class EditorPhotoServiceHandler(Base.BASE):
+# @base.route(URI="/editor/photos/:id_post")
+# class EditorPhotoServiceHandler(base.Base):
+#     executor = ThreadPoolExecutor(max_workers=32)
+#
+#     @run_on_executor
+#     def save_photo(self, id_post: str, data: str, ref_id):
+#
+#         service = base.registry.service('blog')
+#         if not service or 'storage' not in service:
+#             raise http.HttpInternalServerError('service or storage in service is not defined')
+#
+#         edata = data.encode()
+#         binary = base64.decodebytes(edata)
+#         storage = service['storage']
+#
+#         tmp_name = '/tmp/' + ref_id
+#         with open(tmp_name, 'wb') as f:
+#             f.write(binary)
+#
+#         try:
+#             im = Image.open(tmp_name)
+#             # width = im.size[0]
+#             # height = im.size[1]
+#             format = str(im.format).lower()
+#             im.close()
+#         except:
+#             # return {'message': 'Error decoding input data'}, http.status.BAD_REQUEST
+#             raise http.HttpInvalidParam('Error decoding input data')
+#
+#         target = ref_id + '.' + format
+#         shutil.move(tmp_name, storage + '/' + target)
+#
+#         return {'location': service['static'] + target}
+#
+#     # @base.auth()
+#     @base.api()
+#     @gen.coroutine
+#     def post(self, **kwargs):
+#
+#         storage = base.config.conf['storage']
+#         static = base.config.conf['static']
+#
+#         if self.request.files and 'file' in self.request.files:
+#             if len(self.request.files['file']) > 0:
+#                 fname = self.request.files['file'][0]['filename']
+#                 body = self.request.files['file'][0]['body']
+#
+#                 with open(storage + '/' + fname, 'wb') as f:
+#                     f.write(body)
+#
+#                 return {'location': static + fname}
+#
+#         return {'location': '/assets/svg/logo.svg'}
+#
+#
+
+
+@base.route(URI="/editor/photos/:id_post")
+class EditorPhotoServiceHandler(base.Base):
     executor = ThreadPoolExecutor(max_workers=32)
 
-    @run_on_executor
-    def save_photo(self, id_post: str, data: str, ref_id):
+    #
+    # @run_on_executor
+    # def save_photo(self, id_post: str, data: str, ref_id, storage, static):
+    #     edata = data.encode()
+    #     binary = base64.decodebytes(edata)
+    #     tmp_name = '/tmp/' + ref_id
+    #     with open(tmp_name, 'wb') as f:
+    #         f.write(binary)
+    #
+    #     try:
+    #         im = Image.open(tmp_name)
+    #         format = str(im.format).lower()
+    #         im.close()
+    #     except:
+    #         raise http.HttpInvalidParam('Error decoding input data')
+    #
+    #     target = ref_id+'.'+format
+    #     shutil.move(tmp_name, storage+'/'+target)
+    #
+    #     return {'location': service['static']+target}
+    #
+    #     pass
 
-        service = base.registry.service('blog')
-        if not service or 'storage' not in service:
-            raise http.HttpInternalServerError('service or storage in service is not defined')
+    @base.auth()
+    @base.api()
+    # @gen.coroutine
+    async def post(self, **kwargs):
 
-        edata = data.encode()
-        binary = base64.decodebytes(edata)
-        storage = service['storage']
+        storage = base.config.conf['storage']
+        static = base.config.conf['static']
 
-        tmp_name = '/tmp/' + ref_id
-        with open(tmp_name, 'wb') as f:
-            f.write(binary)
-
-        try:
-            im = Image.open(tmp_name)
-            # width = im.size[0]
-            # height = im.size[1]
-            format = str(im.format).lower()
-            im.close()
-        except:
-            # return {'message': 'Error decoding input data'}, http.code.HTTPStatus.BAD_REQUEST
-            raise http.HttpInvalidParam('Error decoding input data')
-
-
-        target = ref_id+'.'+format
-        shutil.move(tmp_name, storage+'/'+target)
-
-        return {'location': service['static']+target}
-
-    # @Base.auth()
-    @Base.api()
-    @gen.coroutine
-    def post(self, **kwargs):
-
-        service = base.registry.service('blog')
-        if not service or 'storage' not in service:
-            raise http.HttpInternalServerError('service or storage in service is not defined')
-
-        storage =  service['storage']
-        static = service['static']
-
-        # print(self.request.files)
+        if storage[-1] == '/':
+            storage = storage[:-1]
+        if static[-1] == '/':
+            static = static[:-1]
 
         if self.request.files and 'file' in self.request.files:
-            if len(self.request.files['file'])>0:
+            if len(self.request.files['file']) > 0:
                 fname = self.request.files['file'][0]['filename']
                 body = self.request.files['file'][0]['body']
 
-                with open(storage+'/'+fname,'wb') as f:
+                with open(storage + '/' + fname, 'wb') as f:
                     f.write(body)
+
+                # res = yield self.save_photo()
 
                 return {'location': static + fname}
 
-        return {'location': '/assets/svg/logo.svg'}
-@Base.route(URI="/photos/:id_post")
-class PostPhotoServiceHandler(Base.BASE):
+        raise http.HttpInternalServerError
+
+
+@base.route(URI="/photos/:id_post")
+class PostPhotoServiceHandler(base.Base):
     executor = ThreadPoolExecutor(max_workers=32)
 
-    @Base.api()
+    @base.api()
     async def get(self, id_post: str):
-        import base.registry
-        prefix = base.registry.service('blog')['prefix']
+        static = base.config.conf['static']
+        if static[-1] == '/':
+            static = static[:-1]
+
         return {
             'photos': [{'id': p.id, 'format': p.format,
                         'filename': p.filename,
-                        'filepath': prefix + '/' + p.id + '.' + p.format} for p in
+                        'uri': static + '/' + p.id + '.' + p.format} for p in
                        self.orm_session.query(models.Photo).filter(models.Photo.id_post == id_post).order_by(
                            desc(models.Photo.created)).all()]}
 
-
     @run_on_executor
     def save_photo(self, id_post: str, data: str, filename: str = None, group: str = None):
+
+        from orm.orm import session
+        sess = session()
 
         try:
 
@@ -324,15 +358,20 @@ class PostPhotoServiceHandler(Base.BASE):
 
             binary = base64.decodebytes(edata)
 
-            photo = models.Photo(self.id_user, id_post, filename)
+            photo = models.Photo(id_user=self.id_user,
+                                 id_post=id_post,
+                                 filename=filename)
 
-            service = base.registry.service('blog')
+            storage = base.config.conf['storage']
+            static = base.config.conf['static']
 
-            if not service or 'storage' not in service:
-                raise http.HttpInternalServerError('service or storage in service is not defined')
+            if static[-1] == '/':
+                static = static[:-1]
 
-            storage = service['storage']
-            temporary_local_filename = f"{storage}{photo.id}.saved"
+            if storage[-1] == '/':
+                storage = storage[:-1]
+
+            temporary_local_filename = f"{storage}/{photo.id}.saved"
 
             try:
                 with open(temporary_local_filename, 'wb') as f:
@@ -348,36 +387,39 @@ class PostPhotoServiceHandler(Base.BASE):
                 photo.format = str(im.format).lower()
                 im.close()
             except:
-                # return {'message': 'Error decoding input data'}, http.code.HTTPStatus.BAD_REQUEST
+                # return {'message': 'Error decoding input data'}, http.status.BAD_REQUEST
                 raise http.HttpInvalidParam('Error decoding input data')
 
-            local_filename = f"{storage}{photo.id}.{photo.format}"
-        try:
-            os.rename(temporary_local_filename, local_filename)
+            local_filename = f"{storage}/{photo.id}.{photo.format}"
 
-        except:
-            raise http.HttpInternalServerError('Error saving photo with format')
-
-        try:
-            with open(local_filename, "rb") as f:
-                sha256hash = hashlib.sha256(f.read()).hexdigest()
-        except:
-            raise http.HttpInternalServerError('error calculating hash')
-
-        photo.hash = sha256hash
-
-        photo.group = group
-
-        with orm_session() as sess:
             try:
-                sess.add(photo)
-                sess.commit()
+                os.rename(temporary_local_filename, local_filename)
 
-                return {'uri': photo.uri_fname()}, http.code.HTTPStatus.CREATED
+            except:
+                raise http.HttpInternalServerError('Error saving photo with format')
 
-            except BaseException as e:
-                sess.rollback()
-                raise http.HttpInternalServerError('Error saving photo info into database')
+            try:
+                with open(local_filename, "rb") as f:
+                    sha256hash = hashlib.sha256(f.read()).hexdigest()
+            except:
+                raise http.HttpInternalServerError('error calculating hash')
 
+            photo.hash = sha256hash
 
+            photo.group = group
 
+            sess.add(photo)
+            sess.commit()
+
+            return {'uri': static + '/' + local_filename.split('/')[-1]}, http.status.CREATED
+
+        except BaseException as e:
+            sess.rollback()
+            raise http.HttpInternalServerError('Error saving photo info into database')
+
+    @base.auth()
+    @base.api()
+    @gen.coroutine
+    def put(self, id_post: str, data: str, filename: str = None, group: str = None):
+
+        return (yield self.save_photo(id_post, data, filename, group))

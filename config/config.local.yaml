@@ -7,6 +7,9 @@ port: &port 80
 
 apptype: 'micro-service'
 
+storage: '/tmp'
+static: '/static'
+
 store:
   type: 'redis'
   host: 'localhost'

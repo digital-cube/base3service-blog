@@ -5,6 +5,9 @@ app_version: '0.0.1'
 host: 'mailer'
 port: &port 80
 
+storage: '/storage'
+static: '/static'
+
 apptype: 'micro-service'
 
 store:

@@ -1,6 +1,9 @@
 import unittest
-from base import http
+from base import http, test
 from unittest.mock import patch
+import os
+
+current_file_folder = os.path.dirname(os.path.realpath(__file__))
 
 from tests.test_base import token2user, SetUpTestblBlogServiceBase, id_user, id_session, random_uuid
 
@@ -184,6 +187,35 @@ class TestPost(SetUpTestblBlogServiceBase):
         self.assertTrue(len(self.last_result['posts']) == 2)
 
         self.show_last_result()
+
+
+@patch('base.token.token2user', token2user)
+class TestPhoto(SetUpTestblBlogServiceBase):
+
+    def test(self):
+        self.api('MOCKUPED', 'POST', '/api/blog/posts', body={'post': {
+            'id_user': id_user,
+            'title': 'ABC Post'
+        }}, expected_code=http.status.CREATED, expected_result_contain_keys={'id'})
+
+        id_post = self.last_result['id']
+
+        photo = test.b64file(current_file_folder + '/sample_photos/digital-cube-logo.png')
+
+        self.api('MOCKUPED', 'PUT', '/api/blog/photos/' + id_post,
+                 {'data': photo, 'filename': 'digital-cube-logo.png'},
+                 expected_code=http.status.CREATED,
+                 expected_result_contain_keys={'uri'}
+                 )
+
+        uri = self.last_result['uri']
+
+        self.api('MOCKUPED', 'GET', '/api/blog/photos/' + id_post,
+                 expected_code=http.status.OK,
+                 expected_result_contain_keys={'photos'})
+
+        self.assertTrue(self.last_result['photos'][0]['uri'] == uri)
+
 
 
 if __name__ == '__main__':
