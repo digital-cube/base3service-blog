@@ -203,98 +203,10 @@ class PageHandler(base.Base):
                 'pages': [p.serialize(fields) for p in query.all()]}
 
 
-# @base.route(URI="/photos/info")
-# class PhotosServiceInfoHandler(base.Base):
-#
-#     @base.api()
-#     async def get(self):
-#         c = self.orm_session.query(models.Photo).count()
-#         return {'info': c}
-
-
-# @base.route(URI="/editor/photos/:id_post")
-# class EditorPhotoServiceHandler(base.Base):
-#     executor = ThreadPoolExecutor(max_workers=32)
-#
-#     @run_on_executor
-#     def save_photo(self, id_post: str, data: str, ref_id):
-#
-#         service = base.registry.service('blog')
-#         if not service or 'storage' not in service:
-#             raise http.HttpInternalServerError('service or storage in service is not defined')
-#
-#         edata = data.encode()
-#         binary = base64.decodebytes(edata)
-#         storage = service['storage']
-#
-#         tmp_name = '/tmp/' + ref_id
-#         with open(tmp_name, 'wb') as f:
-#             f.write(binary)
-#
-#         try:
-#             im = Image.open(tmp_name)
-#             # width = im.size[0]
-#             # height = im.size[1]
-#             format = str(im.format).lower()
-#             im.close()
-#         except:
-#             # return {'message': 'Error decoding input data'}, http.status.BAD_REQUEST
-#             raise http.HttpInvalidParam('Error decoding input data')
-#
-#         target = ref_id + '.' + format
-#         shutil.move(tmp_name, storage + '/' + target)
-#
-#         return {'location': service['static'] + target}
-#
-#     # @base.auth()
-#     @base.api()
-#     @gen.coroutine
-#     def post(self, **kwargs):
-#
-#         storage = base.config.conf['storage']
-#         static = base.config.conf['static']
-#
-#         if self.request.files and 'file' in self.request.files:
-#             if len(self.request.files['file']) > 0:
-#                 fname = self.request.files['file'][0]['filename']
-#                 body = self.request.files['file'][0]['body']
-#
-#                 with open(storage + '/' + fname, 'wb') as f:
-#                     f.write(body)
-#
-#                 return {'location': static + fname}
-#
-#         return {'location': '/assets/svg/logo.svg'}
-#
-#
-
 
 @base.route(URI="/editor/photos/:id_post")
 class EditorPhotoServiceHandler(base.Base):
     executor = ThreadPoolExecutor(max_workers=32)
-
-    #
-    # @run_on_executor
-    # def save_photo(self, id_post: str, data: str, ref_id, storage, static):
-    #     edata = data.encode()
-    #     binary = base64.decodebytes(edata)
-    #     tmp_name = '/tmp/' + ref_id
-    #     with open(tmp_name, 'wb') as f:
-    #         f.write(binary)
-    #
-    #     try:
-    #         im = Image.open(tmp_name)
-    #         format = str(im.format).lower()
-    #         im.close()
-    #     except:
-    #         raise http.HttpInvalidParam('Error decoding input data')
-    #
-    #     target = ref_id+'.'+format
-    #     shutil.move(tmp_name, storage+'/'+target)
-    #
-    #     return {'location': service['static']+target}
-    #
-    #     pass
 
     @base.auth()
     @base.api()
