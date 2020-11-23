@@ -1,5 +1,5 @@
 name: 'blog'
-description: 'base3 mailer application'
+description: 'base3 blog application'
 prefix: '/api/blog'
 app_version: '0.0.1'
 host: 'mailer'
@@ -22,7 +22,7 @@ db:
   type: 'postgres'
   port: 5432
   host: 'postgres'
-  username: 'blog'
+  username: 'telmekom'
   password: '123'
   database: 'blog'
 

@@ -1,9 +1,9 @@
 name: 'blog'
-description: 'base3 mailer application'
+description: 'base3 blog application'
 prefix: '/api/blog'
 app_version: '0.0.1'
 host: 'mailer'
-port: &port 80
+port: &port 9001
 
 apptype: 'micro-service'
 
@@ -22,9 +22,9 @@ db:
   type: 'postgres'
   port: 5432
   host: 'localhost'
-  username: 'blog'
+  username: 'telmekom'
   password: '123'
-  database: 'demo_blog'
+  database: 'impresa_blog'
 
 logging:
   version: 1
